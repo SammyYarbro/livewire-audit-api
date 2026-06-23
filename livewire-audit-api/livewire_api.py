@@ -148,9 +148,11 @@ def generate_audit(req: AuditRequest):
     job_dir = OUTPUT_DIR / f"{safe_company}_{job_id}"
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    findings_json = job_dir / "findings.json"
+    findings_json = None  # set after auto-collect runs
 
     # ---- Step 1: Run the auto-collect script ----
+    # Note: auto_collect takes --output as a DIRECTORY and writes
+    # findings_<slug>_<date>.json inside it.
     try:
         log.info(f"Running auto-collect: {req.url}")
         collect_result = subprocess.run(
@@ -158,7 +160,7 @@ def generate_audit(req: AuditRequest):
                 sys.executable, str(AUTO_COLLECT_SCRIPT),
                 req.url,
                 "--company", req.company,
-                "--output", str(findings_json),
+                "--output", str(job_dir),
             ],
             capture_output=True,
             text=True,
@@ -180,14 +182,16 @@ def generate_audit(req: AuditRequest):
             error="Auto-collect timed out (site took too long to respond).",
         )
 
-    # ---- Step 2: Verify the findings JSON was produced ----
-    if not findings_json.exists():
+    # ---- Step 2: Find the findings JSON the script produced ----
+    json_files = list(job_dir.glob("findings_*.json"))
+    if not json_files:
         return AuditResponse(
             status="error",
             company=req.company,
             url=req.url,
-            error="Auto-collect did not produce findings.json",
+            error="Auto-collect ran but no findings_*.json was produced.",
         )
+    findings_json = json_files[0]
 
     try:
         with open(findings_json) as f:
