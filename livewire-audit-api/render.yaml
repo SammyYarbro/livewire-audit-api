@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: livewire-audit-api
+    runtime: python
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn livewire_api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: OUTPUT_DIR
+        value: /tmp/livewire-reports
+      # Add LIVEWIRE_API_KEY here once Make.com is set up (optional but recommended)
+      # - key: LIVEWIRE_API_KEY
+      #   value: your-secret-key-here
